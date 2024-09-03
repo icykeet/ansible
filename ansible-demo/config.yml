@@ -1,0 +1,73 @@
+---
+- name: Preconfig
+  hosts: icy
+  tasks:
+    - name: Установка Docker
+      become: true
+      block:
+
+        - name: Установка дополнительных пакетов
+          ansible.builtin.apt:
+            name:
+              - ca-certificates
+              - curl
+            update_cache: true
+            cache_valid_time: 86400
+
+        - name: Установка папки keyrings
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+
+        - name: Установка Docker и добавление ключа
+          ansible.builtin.apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+            keyring: /etc/apt/keyrings/docker.asc
+
+        - name: Выдаем права на file docker.asc
+          ansible.builtin.file:
+            path: /etc/apt/keyrings/docker.asc
+            state: file
+            mode: '0444'
+
+        - name: Установка стабильного репозитория
+          ansible.builtin.apt_repository:
+            repo: >
+              deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.asc]
+              https://download.docker.com/linux/ubuntu
+              "{{ ansible_distribution_release }}" stable
+            state: present
+            update_cache: true
+            filename: docker
+
+        - name: To install the latest version
+          ansible.builtin.apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+            update_cache: true
+
+        - name: Проверка установки Docker
+          ansible.builtin.service:
+            name: docker
+            state: restarted
+            enabled: true
+
+
+    - name: Post-installation steps for Linux
+      become: true
+      block:
+
+        - name: Добавление user в группу docker
+          ansible.builtin.user:
+            user: "{{ ansible_user }}"
+            groups: docker
+            append: true
+
+        - name: Reboot
+          ansible.builtin.reboot:
