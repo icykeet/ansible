@@ -1,0 +1,6 @@
+argument_specs:
+  main:
+    description: Настройска серверов для работы с Docker
+    author: IcyDock
+    company: IcyShare
+    license: MIT

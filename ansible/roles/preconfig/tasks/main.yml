@@ -1,0 +1,83 @@
+---
+- name: Установка Docker
+  become: true
+  block:
+
+    # sudo apt-get update
+    - name: Обновляем пакеты
+      ansible.builtin.apt:
+        update_cache: true
+
+    # sudo apt-get install ca-certificates curl
+    - name: Устанавливаем пакеты
+      ansible.builtin.apt:
+        name:
+          - curl
+          - ca-certificates
+        update-cache: true
+        cache_valid_time: 86400
+
+    # sudo install -m 0755 -d /etc/apt/keyrings
+    - name: Создаем папку keyrings
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    # sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg
+    # -o /etc/apt/keyrings/docker.asc
+    # and
+    # sudo chmod a+r /etc/apt/keyrings/docker.asc
+    - name: Установка ключа Docker
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    # ???
+    - name: Установка стабильного репозитория
+      ansible.builtin.apt_repository:
+        repo: >
+          deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/ubuntu
+            {{ ansible_distribution_release }} stable
+        state: present
+        update-cache: true
+        filename: docker
+        # register: info_out
+        # debug:
+          # var: info_out
+
+    # sudo apt-get install
+    # docker-ce
+    # docker-ce-cli
+    # containerd.io
+    # docker-buildx-plugin
+    # docker-compose-plugin
+    - name: Установка пакетов
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        update_cache: true
+
+    - name: Проверка что Docker установлен и перезагружен
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+        enabled: true
+
+- name: Завершение установки
+  become: true
+  block:
+    - name: Добавление пользователя в группу Docker
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true
+
+    - name: Перезагрузка
+      ansible.builtin.reboot:
